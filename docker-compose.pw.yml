@@ -1,0 +1,73 @@
+version: '3.9'
+services:
+  postgres:
+    image: 'postgres:14.5-alpine'
+    environment:
+      - POSTGRES_DB=automatisch
+      - POSTGRES_USER=automatisch_user
+      - POSTGRES_PASSWORD=automatisch_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - '5432:5432'
+    expose:
+      - 5432
+  redis:
+    image: 'redis:7.0.4-alpine'
+    volumes:
+      - redis_data:/data
+    ports:
+      - '6379:6379'
+    expose:
+      - 6379
+  frontend:
+    build:
+      dockerfile: ./docker/Dockerfile.tests
+      # target: web
+    environment:
+      - CI=false
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+
+  api:
+    build:
+      dockerfile: ./docker/Dockerfile.tests
+      # target: api
+    environment:
+      - ENCRYPTION_KEY=sample_encryption_key
+      - WEBHOOK_SECRET_KEY=sample_webhook_secret_key
+      - APP_SECRET_KEY=sample_app_secret_key
+      - POSTGRES_HOST=postgres
+      - POSTGRES_DATABASE=automatisch
+      - POSTGRES_PORT=5432
+      - POSTGRES_USERNAME=automatisch_user
+      - POSTGRES_PASSWORD=automatisch_password
+      - REDIS_HOST=localhost
+      - APP_ENV=production
+      - LICENSE_KEY=dummy_license_key
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    depends_on:
+      - postgres
+      - redis
+
+  api-queue:
+    build:
+      dockerfile: ./docker/Dockerfile.tests
+      # target: api-queue
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
